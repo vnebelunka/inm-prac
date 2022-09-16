@@ -95,7 +95,7 @@ int main() {
     auto start = high_resolution_clock::now();
     Tridiagonaliation(A);
     auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<seconds>(stop - start);
+    auto duration = duration_cast<milliseconds>(stop - start);
     std::cout <<std::endl<< "duration: "<< duration.count() << std::endl;
     //print_matrix(A);
 }
