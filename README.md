@@ -7,8 +7,8 @@ Tridiagonalization of matrix using rotations.
 |----------|:-------------:|
 | 256  |  54    |
 | 512  |    404 |
-| 1024 | 5670   |
-| 2048 | 59000  |
+| 1024 | 4313   |
+| 2048 | 59080  |
 
 
 ![plot](./plot.png)
