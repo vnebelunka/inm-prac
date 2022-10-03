@@ -1,0 +1,42 @@
+\documentclass[12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage[russian]{babel}
+\usepackage{array}
+
+\begin{document}
+	%tittlepage
+	\title{
+		{Matrix tridiagonalization using Given's rotations}\\
+		{\large The faculty of Computational Mathematics and Cybernetics of Lomonosov Moscow State University}\\
+		%{\includegraphics{university.jpg}}
+	}
+	\author{Mass Ilya}
+	\date{03.02.2022}
+	
+	\maketitle
+	
+	\chapter{Naive algorithm}
+	
+	
+	\section{Speed results}
+	\begin{table}[h!]
+		\centering
+		\begin{tabular}{ | c | c | } 
+			\hline
+			size of matrix & time, ms\\  [0.5ex] 
+			\hline\hline
+			256 & 54 \\ 
+			\hline
+			512 & 404 \\ 
+			\hline
+			1024 & 4313 \\
+			\hline
+			2048 & 59080 \\
+			\hline
+		\end{tabular}
+		\caption{Results of non-optimized algorithm}
+	\end{table}  
+	
+\end{document}
