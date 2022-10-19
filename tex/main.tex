@@ -38,5 +38,31 @@
 		\end{tabular}
 		\caption{Results of non-optimized algorithm}
 	\end{table}  
-	
+
+	\chapter{Cache Optimization}
+	Функция, отвечающая за зануление одной строчки и столбца была обновлена. Теперь она вначале применяет вращения слева
+	(меняя строки, зануляя столбец), запоминая углы поворота. Далее, Применяются все повороты для зануления строки построчно,
+	Что позволяет обходить матрицу только по строкам.
+
+	\section{Speed results}
+	\begin{table}[h!]
+		\centering
+		\begin{tabular}{ | c | c | }
+			\hline
+			size of matrix & time, ms\\  [0.5ex]
+			\hline\hline
+			256 & 28 \\
+			\hline
+			512 & 229 \\
+			\hline
+			1024 & 1861 \\
+			\hline
+			2048 & 15393 \\
+			\hline
+			4096 & 124157 \\
+			\hline
+		\end{tabular}
+		\caption{Results of non-optimized algorithm}
+	\end{table}
+
 \end{document}
