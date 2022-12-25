@@ -1,4 +1,4 @@
-PROGRAM main
+PROGRAM blas
     implicit none
 
     DOUBLE PRECISION, dimension (:, :), allocatable :: A, D
@@ -24,7 +24,7 @@ PROGRAM main
     call cpu_time(start)
     call tridiagonalization(A, D, n, coss, sins, cur_rots_size)
     call cpu_time(finish)
-    if (n < 10) then
+    if (n < 5) then
         do i = 1, n
             print *, D(i, :)
         end do
@@ -33,22 +33,7 @@ PROGRAM main
 
     deallocate (A, D, coss, sins)
 
-END PROGRAM main
-
-subroutine rotationCol(A,n, i, j, c, s, start)
-    implicit none
-    integer :: k
-    integer, INTENT(IN) :: n, i, j, start
-    DOUBLE PRECISION, INTENT(IN) :: c, s
-    DOUBLE PRECISION, INTENT(OUT), dimension(n, n) :: A
-    DOUBLE PRECISION :: aki, akj
-    do k = start, n
-        aki = c * A(k, i) - s * A(k, j)
-        akj = s * A(k, i) + c * A(k, j)
-        A(k, i) = aki
-        A(k, j) = akj
-    end do
-end subroutine rotationCol
+END PROGRAM blas
 
 subroutine applyRotationCR(D, n, col, coss, sins, rots_size)
     implicit none
@@ -67,7 +52,7 @@ subroutine applyRotationCR(D, n, col, coss, sins, rots_size)
         modd = sqrt(D(col+1, col)**2 + D(i,col)**2)
         s = -D(i, col) / modd
         c = D(col, col+1) / modd
-        call rotationCol(D, n, col + 1 ,i, c, s, col)
+        call drot(n, D(:, col+1), 1, D(:, i), 1, c, -s)
         coss(rots_size) = c
         sins(rots_size) = s
         rots_size = rots_size + 1

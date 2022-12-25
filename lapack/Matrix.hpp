@@ -23,6 +23,14 @@ public:
     std::pair<size_t, size_t> size() const{
         return {n, m};
     }
+
+    T* data(){
+        return data_.data();
+    }
+
+    auto row(size_t i){
+        return data_.data() + n * i;
+    }
 };
 
 void print_matrix(Matrix<double> const& A);

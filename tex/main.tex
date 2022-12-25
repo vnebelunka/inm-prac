@@ -65,4 +65,28 @@
 		\caption{Results of cache-optimized algorithm}
 	\end{table}
 
+	\chapter{Blas usage}
+	Вращение строк было заменено на метод drot из cblas библиотеки (сохранение углов для поворта для столбцов делается вручную)
+
+	\section{Speed results}
+	\begin{table}[h!]
+		\centering
+		\begin{tabular}{ | c | c | }
+			\hline
+			size of matrix & time, ms\\  [0.5ex]
+			\hline\hline
+			256 & 14 \\
+			\hline
+			512 & 120 \\
+			\hline
+			1024 & 1028 \\
+			\hline
+			2048 & 8945 \\
+			\hline
+			4096 & 73871 \\
+			\hline
+		\end{tabular}
+		\caption{Results of algorithm with BLAS usage}
+	\end{table}
+
 \end{document}
