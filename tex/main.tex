@@ -65,7 +65,32 @@
 		\caption{Results of cache-optimized algorithm}
 	\end{table}
 
-	\chapter{Blas usage}
+	\chapter{fortran implementation}
+	Код переписан на фортран, из-за хранения массивов в памяти по столбцам изменен порядок вращений: сначала столбцы, потом
+	по собранным углам вращаются строки
+
+	\section{Speed results}
+	\begin{table}[h!]
+		\centering
+		\begin{tabular}{ | c | c | }
+			\hline
+			size of matrix & time, ms\\  [0.5ex]
+			\hline\hline
+			256 & 14 \\
+			\hline
+			512 & 114 \\
+			\hline
+			1024 & 961 \\
+			\hline
+			2048 & 8165 \\
+			\hline
+			4096 & 67257 \\
+			\hline
+		\end{tabular}
+		\caption{Results of algorithm with fortran implementation}
+	\end{table}
+
+	\chapter{Blas usage for C}
 	Вращение строк было заменено на метод drot из cblas библиотеки (сохранение углов для поворта для столбцов делается вручную)
 
 	\section{Speed results}
@@ -77,16 +102,85 @@
 			\hline\hline
 			256 & 14 \\
 			\hline
-			512 & 120 \\
+			512 & 124 \\
 			\hline
-			1024 & 1028 \\
+			1024 & 997 \\
 			\hline
-			2048 & 8945 \\
+			2048 & 8980 \\
 			\hline
-			4096 & 73871 \\
+			4096 & 74376 \\
 			\hline
 		\end{tabular}
-		\caption{Results of algorithm with BLAS usage}
+		\caption{Results of algorithm with BLAS C usage}
 	\end{table}
 
+	\chapter{Blas usage for Fortran}
+	Вращение строк было заменено на метод drot из cblas библиотеки (сохранение углов для поворта для столбцов делается вручную)
+
+	\section{Speed results}
+	\begin{table}[h!]
+		\centering
+		\begin{tabular}{ | c | c | }
+			\hline
+			size of matrix & time, ms\\  [0.5ex]
+			\hline\hline
+			256 & 15 \\
+			\hline
+			512 & 120 \\
+			\hline
+			1024 & 984 \\
+			\hline
+			2048 & 8793 \\
+			\hline
+			4096 & 73021 \\
+			\hline
+		\end{tabular}
+		\caption{Results of algorithm with BLAS Fortran usage}
+	\end{table}
+
+	\chapter{lapack usage for C}
+	Вызывалась функция dsytd2
+	\section{Speed results}
+	\begin{table}[h!]
+		\centering
+		\begin{tabular}{ | c | c | }
+			\hline
+			size of matrix & time, ms\\  [0.5ex]
+			\hline\hline
+			256 & 3 \\
+			\hline
+			512 & 26 \\
+			\hline
+			1024 & 210 \\
+			\hline
+			2048 & 2213 \\
+			\hline
+			4096 & 18461 \\
+			\hline
+		\end{tabular}
+		\caption{Results of algorithm with lapack C usage}
+	\end{table}
+
+	\chapter{lapack usage for Fortan}
+	Вызывалась функция dsytd2
+	\section{Speed results}
+	\begin{table}[h!]
+		\centering
+		\begin{tabular}{ | c | c | }
+			\hline
+			size of matrix & time, ms\\  [0.5ex]
+			\hline\hline
+			256 & 3 \\
+			\hline
+			512 & 24 \\
+			\hline
+			1024 & 240 \\
+			\hline
+			2048 & 2217 \\
+			\hline
+			4096 & 18500 \\
+			\hline
+		\end{tabular}
+		\caption{Results of algorithm with lapack Fortran usage}
+	\end{table}
 \end{document}
