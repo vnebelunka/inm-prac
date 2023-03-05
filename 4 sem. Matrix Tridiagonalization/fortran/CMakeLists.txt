@@ -6,4 +6,4 @@ set(GCC_COVERAGE_COMPILE_FLAGS "-flto -Ofast -march=native")
 set(CMAKE_Fortran_FLAGS "${GCC_COVERAGE_COMPILE_FLAGS}")
 
 
-add_executable(Cucumber_f90 main.f90)
+add_executable(Tridiagonalizationf main.f90)
