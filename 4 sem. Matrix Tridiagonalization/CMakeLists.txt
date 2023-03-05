@@ -10,4 +10,4 @@ add_subdirectory(blas)
 add_subdirectory(fortran)
 add_subdirectory(lapack)
 
-add_executable(Cucumber main.cpp progressbar.h Matrix.cpp Matrix.hpp blas/main.cpp)
+add_executable(TridiagonalizationCpp main.cpp progressbar.h Matrix.cpp Matrix.hpp blas/main.cpp)
