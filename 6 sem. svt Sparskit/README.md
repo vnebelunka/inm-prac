@@ -7,7 +7,7 @@
 mkdir build && cd build
 cmake .. && make
 ```
-## usage
+## Usage
 ```console
 ./sparskit ../data/1.dat
 ```
