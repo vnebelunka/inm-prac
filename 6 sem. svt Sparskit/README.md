@@ -2,6 +2,7 @@
 ## Requriements:
 1. blas package
 
+## Build
 ```console
 mkdir build && cd build
 cmake .. && make
