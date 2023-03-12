@@ -1,8 +1,7 @@
+#pragma once
+
 #include <vector>
 #include <iostream>
-
-#ifndef CUCUMBER_MATRIX_HPP
-#define CUCUMBER_MATRIX_HPP
 template<class T>
 class Matrix {
     std::vector<T> data_;
@@ -49,5 +48,3 @@ template <typename T>
 double norm(const std::vector<T>& a);
 
 #include "Matrix.tpp"
-
-#endif //CUCUMBER_MATRIX_HPP

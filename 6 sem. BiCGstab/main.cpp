@@ -1,7 +1,28 @@
 #include "Matrix.hpp"
+#include <random>
 
 using std::vector;
 using std::complex;
+
+template<typename T>
+void gen_matrix(Matrix<T>& A){
+    std::default_random_engine eng;
+    std::uniform_real_distribution<double> distr(-10, 10);
+    int n = A.size().first, m = A.size().second;
+    for(int i = 0; i < n; ++i){
+        for(int j = 0; j < m; ++j){
+            A(i, j) = distr(eng);
+        }
+    }
+    for(int i = 0; i < n; ++i){
+        A(i, i) = fabs(A(i, i));
+        for(int j = 0; j < m; ++j){
+            if(i != j){
+                A(i, i) += fabs(A(i, j));
+            }
+        }
+    }
+}
 
 template <typename T>
 vector<T> BiCGstab(Matrix<T> A, vector<T> b, double eps){
@@ -47,19 +68,15 @@ int main(){
     std::cin >> n;
     Matrix<double> A(n, n);
     vector<double> b(n);
-    for(int i = 0; i < n; ++i){
-        for(int j = 0; j < n; ++j) {
-            std::cin >> A(i, j);
-        }
+    gen_matrix(A);
+    if(n < 10) {
+        print_matrix(A);
     }
     for(int i = 0; i < n; ++i){
-        std::cin>> b[i];
+        b[i] = sin(i);
     }
 
-    vector<double> x = BiCGstab(A, b, 1e-4);
+    vector<double> x = BiCGstab(A, b, 1e-8);
     std::cout << "x = \n";
-    for(int i = 0; i < n; ++i){
-        std::cout << x[i] << '\n';
-    }
     std::cout <<"r = " << norm(b - matvec(A, x)) << std::endl;
 }

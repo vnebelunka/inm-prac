@@ -2,6 +2,7 @@
 
 #include <complex.h>
 #include "Matrix.hpp"
+#include <cblas.h>
 
 template<typename T>
 T dot(const std::vector<T>& a,const std::vector<T>& b){
@@ -13,6 +14,9 @@ T dot(const std::vector<T>& a,const std::vector<T>& b){
 }
 
 using std::complex;
+
+
+
 template<typename T>
 complex<T> dot(const std::vector<complex<T>>& a, const std::vector<complex<T>>& b){
     complex<T> ans = 0;
