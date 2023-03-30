@@ -1,3 +1,5 @@
+Масс Илья Александрович
+
 # Cucumber
 Tridiagonalization of matrix using rotations.
 
