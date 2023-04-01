@@ -24,41 +24,41 @@ void gen_matrix(Matrix<T>& A){
     }
 }
 
-template <typename T>
-vector<T> BiCGstab(Matrix<T> A, vector<T> b, double eps){
+template <typename DataType>
+vector<DataType> BiCGstab(Matrix<DataType> A, vector<DataType> b, double eps){
     int n = b.size();
-    vector<T> x(n), r = b - matvec(A, x), rconj = r, p = r;
+    vector<DataType> x(n), r_k = b - matvec(A, x), rconj0 = r_k, p = r_k;
     int iter = 0;
-    for(;iter < 1e6; ++iter){
-        vector<T> Ap = matvec(A, p);
-        T a = dot(r, rconj) / dot(Ap, rconj);
-        vector<T> s = r - a * Ap;
-        if(fabs(norm(s)) < eps){
-            x = x + a * p;
+    for(;iter < 1e4; ++iter){
+        vector<DataType> Ap_k = matvec(A, p);
+        DataType alpha_k = dot(r_k, rconj0) / dot(Ap_k, rconj0);
+        vector<DataType> s_k = r_k - alpha_k * Ap_k;
+        if(fabs(norm(s_k)) < eps){
+            x = x + alpha_k * p;
             break;
         }
-        vector<T> As = matvec(A, s);
-        T w = dot(As, s) / dot(As, As);
-        x = x + a * p + w * s;
-        T bk = 1. / dot(r, rconj);
+        vector<DataType> As_k = matvec(A, s_k);
+        DataType w_k = dot(As_k, s_k) / dot(As_k, As_k);
+        x = x + alpha_k * p + w_k * s_k;
         // orthogonality check
         if(iter % 1000 != 1) {
-            r = s - w * As;
+            r_k = s_k - w_k * As_k;
         } else {
-            r = b - matvec(A, x);
+            r_k = b - matvec(A, x);
+            std::cout << dot(r_k, r_k) << std::endl;
         }
-        if(fabs(norm(r)) < eps){
+        if(fabs(norm(r_k)) < eps){
             break;
         }
-        bk *= dot(r, rconj);
-        p = r + bk * p - w * Ap;
+        DataType b_k = dot(r_k, rconj0) / dot(r_k, rconj0);
+        p = r_k + b_k * p - w_k * Ap_k;
         // restart
-        if(fabs(dot(r, rconj)) < 1e-8){
-            rconj = r;
-            p = r;
+        if(fabs(dot(r_k, rconj0)) < 1e-8){
+            rconj0 = r_k;
+            p = r_k;
         }
     }
-    std::cout << "iters:" << iter << std::endl;
+    std::cout << "iters: " << iter << std::endl;
     return x;
 }
 
@@ -77,6 +77,5 @@ int main(){
     }
 
     vector<double> x = BiCGstab(A, b, 1e-8);
-    std::cout << "x = \n";
     std::cout <<"r = " << norm(b - matvec(A, x)) << std::endl;
 }
