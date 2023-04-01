@@ -1,0 +1,55 @@
+\input{preamble}
+
+\begin{document}
+	\tableofcontents
+	
+	\section{Постановка задачи}
+	Необходимо:
+	\begin{enumerate}
+		\item Написать код, который загружает матрицу и правую часть, строит переобуславливатель ILU2 и запускает BiCGStab;
+		\item Аналогично части 1 составить табличку с временами построения переобуславливателя и решения системы, повторить это для значений drop\_tolerance 0.1, 0.01, 0.001;
+		\item Воспользовавшись функцией рисования портрета матрицы (DrawMatrix) из репозитория \href{https://github.com/INMOST-DEV/INMOST-Graphics}{INMOST-GRAPHICS}, нарисовать портрет одной из матриц своего набора и вставить в отчет.
+	\end{enumerate}
+	
+	\section{Результаты}
+	
+	Время измерялось с помощью $Timer()$, код выполнялся на 8ядерном процессоре.
+	
+	\begin{table}[h!]
+		\centering
+		\begin{tabular}{ | c | c | c | c | c | }
+			\hline
+			Размер матрицы & drop\_tol & Время ILU(K) & Время GMRES & Итераций GMRES\\  [0.3ex]
+			\hline\hline
+			2889 & 0.1 & 0.17 & 0.22 & 17 \\
+			\hline
+			2889 & 0.01 & 0.49 & 0.11 & 6 \\
+			\hline
+			2889 & 0.001 & 0.92 & 0.08 & 3 \\
+			\hline
+			45258 & 0.1 & 4.04  & 10.2 & 42 \\  
+			\hline
+			45258 & 0.01 & 16.03 & 4.43 & 14 \\
+			\hline
+			45258 & 0.001 & 42.54 & 3.90 & 7 \\ 
+			\hline 
+			199950 & 0.1 & 18.53 & 77.18 & 74 \\
+			\hline
+			199950 & 0.01 & 84.6 & 29.24 & 20 \\
+			\hline
+			199950 & 0.001 & 252.8 & 27.9& 11 \\
+			\hline
+			\hline
+		\end{tabular}
+		\caption{измерения времени работы программы. Время указано в секундах.}
+		\label{table:1}
+	\end{table}
+	
+	\section{Портрет матрицы}
+	
+	\begin{figure}[h!]
+		\includegraphics[scale=0.5]{A_g2_1_portait.png}
+		\caption{Портрет матрицы A_g2_1.mtx}
+	\end{figure}
+	
+\end{document}
