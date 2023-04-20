@@ -22,6 +22,8 @@ public:
     std::pair<size_t, size_t> size() const{
         return {n, m};
     }
+
+    std::vector<T> matvec(const std::vector<T> & x);
 };
 
 void print_matrix(Matrix<double> const& A);
@@ -29,8 +31,8 @@ void print_matrix(Matrix<double> const& A);
 template<typename T>
 T dot(const std::vector<T>& a,const std::vector<T>& b);
 
-template<typename T>
-std::vector<T> matvec(const Matrix<T>& A, const std::vector<T>& x);
+//template<typename T>
+//std::vector<T> matvec(const Matrix<T>& A, const std::vector<T>& x);
 
 template <typename T>
 std::vector<T> operator+(const std::vector<T> &a, const std::vector<T> &b);
