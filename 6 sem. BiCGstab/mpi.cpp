@@ -26,15 +26,16 @@ void gen_matrix(Matrix<T>& A){
 
 
 
-vector<double> BiCGstab(Matrix<double> &A_chunk, vector<double>& b_chunk, double eps, int proc_id, int n_proc){
+vector<double> BiCGstab(Matrix<double> &A_chunk, vector<double>& b_chunk, double rel_tol, int proc_id, int n_proc){
     int n = b_chunk.size();
+    rel_tol *= norm(b_chunk, proc_id, n_proc);
     vector<double> x(n), r_k = b_chunk - matvec(A_chunk, x, proc_id, n_proc), rconj0 = r_k, p = r_k;
     int iter = 0;
     for(;iter < 1e4; ++iter){
         vector<double> Ap_k = matvec(A_chunk, p, proc_id, n_proc);
         double alpha_k = dot(r_k, rconj0, proc_id, n_proc) / dot(Ap_k, rconj0, proc_id, n_proc);
         vector<double> s_k = r_k - alpha_k * Ap_k;
-        if(norm(s_k, proc_id, n_proc) < eps){
+        if(norm(s_k, proc_id, n_proc) < rel_tol){
             x = x + alpha_k * p;
             break;
         }
@@ -43,13 +44,13 @@ vector<double> BiCGstab(Matrix<double> &A_chunk, vector<double>& b_chunk, double
         x = x + alpha_k * p + w_k * s_k;
         double r_krconj_0 = dot(r_k, rconj0, proc_id, n_proc);
         // orthogonality check
-        if(iter % 1000 != 1) {
+        if(iter % 10 != 1) {
             r_k = s_k - w_k * As_k;
         } else {
             r_k = b_chunk - matvec(A_chunk, x, proc_id, n_proc);
-            std::cout << norm(r_k, proc_id, n_proc) << std::endl;
+            std::cout << "r norm = " << norm(r_k, proc_id, n_proc) << " on iteration "  << iter << std::endl;
         }
-        if(norm(r_k, proc_id, n_proc) < eps){
+        if(norm(r_k, proc_id, n_proc) < rel_tol){
             break;
         }
         double b_k = dot(r_k, rconj0, proc_id, n_proc) / r_krconj_0;
@@ -94,9 +95,12 @@ int main(int argc, char**argv){
     MPI_Scatter(A.data(), N * k, MPI_DOUBLE, A_chunk.data(), N * k, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Scatter(b.data(), N, MPI_DOUBLE, b_chunk.data(), N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    vector<double> x = BiCGstab(A_chunk, b_chunk, 1e-5, proc_id, n_proc);
-    MPI_Barrier(MPI_COMM_WORLD);
+    //cblas_dgemv(CblasRowMajor, CblasNoTrans, N, N, 1, &(A_chunk(0, N)), k, b_chunk.data(), 1, 0, x_chunk.data(), 1);
 
+    vector<double> x = BiCGstab(A_chunk, b_chunk, 1e-8, proc_id, n_proc);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    std::cout << std::endl;
     vector<double> r = b_chunk - matvec(A_chunk, x, proc_id, n_proc);
     std::cout << "r = " << norm(r, proc_id, n_proc) << std::endl;
     MPI_Finalize();
