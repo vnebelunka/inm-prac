@@ -28,17 +28,17 @@ void gen_matrix(Matrix<T>& A){
 template <typename DataType>
 vector<DataType> BiCGstab(Matrix<DataType> A, vector<DataType> b, double eps){
     int n = b.size();
-    vector<DataType> x(n), r_k = b - matvec(A, x), rconj0 = r_k, p = r_k;
+    vector<DataType> x(n), r_k = b - A.matvec(x), rconj0 = r_k, p = r_k;
     int iter = 0;
     for(;iter < 1e4; ++iter){
-        vector<DataType> Ap_k = matvec(A, p);
+        vector<DataType> Ap_k = A.matvec(p);
         DataType alpha_k = dot(r_k, rconj0) / dot(Ap_k, rconj0);
         vector<DataType> s_k = r_k - alpha_k * Ap_k;
         if(fabs(norm(s_k)) < eps){
             x = x + alpha_k * p;
             break;
         }
-        vector<DataType> As_k = matvec(A, s_k);
+        vector<DataType> As_k = A.matvec(s_k);
         DataType w_k = dot(As_k, s_k) / dot(As_k, As_k);
         x = x + alpha_k * p + w_k * s_k;
         DataType r_krconj_0 = dot(r_k, rconj0);
@@ -46,7 +46,7 @@ vector<DataType> BiCGstab(Matrix<DataType> A, vector<DataType> b, double eps){
         if(iter % 1000 != 1) {
             r_k = s_k - w_k * As_k;
         } else {
-            r_k = b - matvec(A, x);
+            r_k = b - A.matvec(x);
             std::cout << dot(r_k, r_k) << std::endl;
         }
         if(fabs(norm(r_k)) < eps){
@@ -79,5 +79,5 @@ int main(){
     }
 
     vector<double> x = BiCGstab(A, b, 1e-8);
-    std::cout <<"r = " << norm(b - matvec(A, x)) << std::endl;
+    std::cout <<"r = " << norm(b - A.matvec(x)) << std::endl;
 }
