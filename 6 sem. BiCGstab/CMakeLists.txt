@@ -11,8 +11,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lcblas")
 
 find_package(BLAS REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(MPI REQUIRED)
 
 add_executable(BiCGstab main.cpp Matrix.cpp)
+target_link_libraries(BiCGstab OpenMP::OpenMP_CXX MPI::MPI_CXX)
+target_include_directories(BiCGstab PUBLIC include)
 
-target_link_libraries(BiCGstab OpenMP::OpenMP_CXX)
-target_include_directories(BiCGstab PRIVATE include)
+add_executable(BiCGstab_mpi mpi.cpp Matrix.cpp)
+target_include_directories(BiCGstab_mpi PUBLIC include)
+target_link_libraries(BiCGstab_mpi MPI::MPI_CXX)

@@ -1,5 +1,6 @@
 #include "Matrix.hpp"
 #include <random>
+#include <complex>
 
 using std::vector;
 using std::complex;
@@ -40,6 +41,7 @@ vector<DataType> BiCGstab(Matrix<DataType> A, vector<DataType> b, double eps){
         vector<DataType> As_k = matvec(A, s_k);
         DataType w_k = dot(As_k, s_k) / dot(As_k, As_k);
         x = x + alpha_k * p + w_k * s_k;
+        DataType r_krconj_0 = dot(r_k, rconj0);
         // orthogonality check
         if(iter % 1000 != 1) {
             r_k = s_k - w_k * As_k;
@@ -50,7 +52,7 @@ vector<DataType> BiCGstab(Matrix<DataType> A, vector<DataType> b, double eps){
         if(fabs(norm(r_k)) < eps){
             break;
         }
-        DataType b_k = dot(r_k, rconj0) / dot(r_k, rconj0);
+        DataType b_k = dot(r_k, rconj0) / r_krconj_0;
         p = r_k + b_k * p - w_k * Ap_k;
         // restart
         if(fabs(dot(r_k, rconj0)) < 1e-8){
