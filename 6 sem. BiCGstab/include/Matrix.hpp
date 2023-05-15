@@ -4,6 +4,7 @@
 #include <iostream>
 #include <mpi.h>
 
+
 template<class T>
 class Matrix {
     std::vector<T> data_;

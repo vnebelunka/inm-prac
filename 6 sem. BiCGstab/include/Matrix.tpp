@@ -30,13 +30,13 @@ complex<T> dot(const std::vector<complex<T>>& a, const std::vector<complex<T>>& 
 }
 
 template<typename T>
-std::vector<T> Matrix<T>::matvec(const std::vector<T>& x){
-    size_t n = this->size().first, m = this->size().second;
+std::vector<T> matvec(const Matrix<T> & A, const std::vector<T>& x){
+    size_t n = A.size().first, m = A.size().second;
     std::vector<T> ans(m);
-#pragma omp parallel for shared(ans, x, n, m) default(none) collapse(2)
+#pragma omp parallel for shared(ans, x, n, m, A) default(none) collapse(2)
     for(int i = 0; i < m; ++i){
         for(int j = 0; j < n; ++j){
-            ans[i] += (*this)(i, j) * x[j];
+            ans[i] += A(i, j) * x[j];
         }
     }
     return ans;
