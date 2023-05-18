@@ -1,33 +1,26 @@
-#include "Matrix.hpp"
 #include <iostream>
 #include <cblas.h>
 #include <unistd.h>
 #include <mpi.h>
 
-double dot( std::vector<double> &a_chunk, std::vector<double> & b_chunk, int proc_id, int n_proc){
+#include "Matrix.hpp"
+
+
+double dot( std::vector<double> &a_chunk, std::vector<double> & b_chunk, int proc_id, int n_proc, MPI_Comm comm = MPI_COMM_WORLD){
     double dot_chunk = cblas_ddot(a_chunk.size(), a_chunk.data(), 1, b_chunk.data(), 1);
     double dot;
-    MPI_Allreduce(&dot_chunk, &dot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&dot_chunk, &dot, 1, MPI_DOUBLE, MPI_SUM, comm);
     return dot;
 }
 
-double norm(std::vector<double> &a_chunk, int proc_id, int n_proc){
-    return sqrt(dot(a_chunk, a_chunk, proc_id, n_proc));
+double norm(std::vector<double> &a_chunk, int proc_id, int n_proc, MPI_Comm comm = MPI_COMM_WORLD){
+    return sqrt(dot(a_chunk, a_chunk, proc_id, n_proc, comm));
 }
 
-
-/*std::vector<double> matvec(Matrix<double> &A_chunk, const std::vector<double> &x_chunk, int proc_id, int n_proc){
-    int k = A_chunk.size().second;
-    int n = A_chunk.size().first;
-    std::vector<double> x(n * n_proc), y_chunk(n);
-    MPI_Allgather(x_chunk.data(), n, MPI_DOUBLE, x.data(), n, MPI_DOUBLE, MPI_COMM_WORLD);
-    cblas_dgemv(CblasRowMajor, CblasNoTrans, n, k, 1, A_chunk.data(), k, x.data(), 1, 0, y_chunk.data(), 1);
-    return y_chunk;
-}*/
-
-std::vector<double> matvec(Matrix<double> &A_chunk, const std::vector<double> &x_chunk, int proc_id, int n_proc){
-    int k = A_chunk.size().second;
-    int n = A_chunk.size().first;
+template<>
+std::vector<double> Matrix<double>::matvec(const std::vector<double> &x_chunk) const {
+    int k = this->m;
+    int n = this->n;
     std::vector<double> y_chunk(n), matvec_chunk(x_chunk);
     for(int shift = 1; shift < n_proc; ++shift){
         int send_proc_id = (proc_id + shift) % n_proc, recv_proc_id = (proc_id - shift + n_proc) % n_proc;
@@ -37,21 +30,23 @@ std::vector<double> matvec(Matrix<double> &A_chunk, const std::vector<double> &x
         MPI_Irecv(next_chunk.data(), n, MPI_DOUBLE, recv_proc_id, shift, MPI_COMM_WORLD, &recv);
 
         int block_start_col = (proc_id + shift - 1) % n_proc;
-        cblas_dgemv(CblasRowMajor, CblasNoTrans, n, n, 1, &A_chunk(0, block_start_col * n), k, matvec_chunk.data(), 1, 1, y_chunk.data(), 1);
+        cblas_dgemv(CblasRowMajor, CblasNoTrans, n, n, 1, &data_[block_start_col * n], k, matvec_chunk.data(), 1, 1, y_chunk.data(), 1);
 
-        MPI_Status status;
+        MPI_Status status{0};
         MPI_Wait(&send, &status);
-        if(!status.MPI_ERROR){
+        MPI_Wait(&recv, &status);
+        if(status.MPI_ERROR){
+            printf("%x\n", status.MPI_ERROR);
             throw std::runtime_error("send failed");
         }
-        MPI_Wait(&recv, &status);
-        if(!status.MPI_ERROR){
+        if(status.MPI_ERROR){
+            printf("%x\n", status.MPI_ERROR);
             throw std::runtime_error("recv failed");
         }
         matvec_chunk = next_chunk;
     }
     int block_start_col = (proc_id - 1 + n_proc) % n_proc;
-    cblas_dgemv(CblasRowMajor, CblasNoTrans, n, n, 1, &A_chunk(0, block_start_col * n), k, matvec_chunk.data(), 1, 1, y_chunk.data(), 1);
+    cblas_dgemv(CblasRowMajor, CblasNoTrans, n, n, 1, &data_[block_start_col * n], k, matvec_chunk.data(), 1, 1, y_chunk.data(), 1);
     return y_chunk;
 }
 
