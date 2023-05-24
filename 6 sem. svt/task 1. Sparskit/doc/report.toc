@@ -1,0 +1,4 @@
+\babel@toc {russian}{}\relax 
+\contentsline {section}{\numberline {0.1}Постановка задачи}{1}{section.0.1}%
+\contentsline {section}{\numberline {0.2}Результаты}{1}{section.0.2}%
+\contentsline {section}{\numberline {0.3}Выводы}{2}{section.0.3}%
