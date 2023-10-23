@@ -4,10 +4,13 @@
 #include <cmath>
 
 double f(double x, double y){
-    return sin(M_PI * x) * sin(M_PI * y);
+    return sin(10 * x) * sin(10 * y);
 }
 
 double u(double x, double y, double dx = 1., double dy = 1.){
-    return sin(M_PI * x) * sin(M_PI * y) / ((dx + dy) * M_PI * M_PI);
+    return sin(10 * x) * sin(10 * y) / ((dx + dy) * 10 * 10);
 }
 
+double g_bond(double x, double y){
+    return sin(10 * x) * sin(10 * y) / ((2) * 10 * 10);
+}

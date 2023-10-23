@@ -16,6 +16,5 @@ add_definitions(${INMOST_DEFINITIONS})
 
 
 add_executable(fdm main.cpp
-        mesh.cpp
         functions.cpp)
 target_link_libraries(fdm ${INMOST_LIBRARIES})
