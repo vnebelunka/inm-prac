@@ -15,6 +15,7 @@ include_directories(${INMOST_INCLUDE_DIRS})
 add_definitions(${INMOST_DEFINITIONS})
 
 
-add_executable(fdm main.cpp
-        functions.cpp)
-target_link_libraries(fdm ${INMOST_LIBRARIES})
+add_executable(fde 
+        main.cpp
+        functions.hpp)
+target_link_libraries(fde ${INMOST_LIBRARIES})
