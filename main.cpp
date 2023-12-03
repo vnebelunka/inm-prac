@@ -58,7 +58,7 @@ public:
 	void run();
     //double get_c_norm();
     double get_L2_norm();
-    double linear_approx_tri(double x, double y, const Cell&, const Node&);
+    double linear_approx_tri(double x, double y, const Cell&);
 };
 
 Problem::Problem(Mesh &m_) : m(m_)
@@ -204,12 +204,12 @@ void coords_from_barycentric(double *node_x, double *node_y, double *eta, double
 	*y = node_y[0] * eta[0] + node_y[1] * eta[1] + node_y[2] * eta[2];
 }
 
-double Problem::linear_approx_tri(double x, double y, const Cell &c, const Node &n){
+double Problem::linear_approx_tri(double x, double y, const Cell &c){
     ElementArray<Node> nodes = c.getNodes();
     double res = 0.0;
     for(unsigned i = 0; i < 3; i++){
-        double xn[3];
-        nodes[i].Barycenter(xn);
+        //double xn[3];
+        //nodes[i].Barycenter(xn);
         res += nodes[i].Real(tagConc) * basis_func(x, y, c, nodes[i]);
     }
     return conc_an(x, y) - res;
@@ -304,7 +304,7 @@ double integrate_over_triangle(const Cell &c, const Node n, double (*f)(double, 
 	return res;
 }
 
-double integrate_over_triangle1(const Cell &c, const Node& n, Problem &p)
+double integrate_over_triangle1(const Cell &c, Problem &p)
 {
     double res = 0.0;
     double w3 = 0.205950504760887;
@@ -334,20 +334,20 @@ double integrate_over_triangle1(const Cell &c, const Node& n, Problem &p)
     eta[1] = eta3[1];
     eta[2] = eta3[2];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     //printf("x = %e, y = %e, val = %e\n", x, y, val);
     res += w3 * val;
     eta[0] = eta3[1];
     eta[1] = eta3[2];
     eta[2] = eta3[0];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     res += w3 * val;
     eta[0] = eta3[2];
     eta[1] = eta3[0];
     eta[2] = eta3[1];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     res += w3 * val;
 
 
@@ -356,37 +356,37 @@ double integrate_over_triangle1(const Cell &c, const Node& n, Problem &p)
     eta[1] = eta6[1];
     eta[2] = eta6[2];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     res += w6 * val;
     eta[0] = eta6[0];
     eta[1] = eta6[2];
     eta[2] = eta6[1];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     res += w6 * val;
     eta[0] = eta6[1];
     eta[1] = eta6[0];
     eta[2] = eta6[2];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     res += w6 * val;
     eta[0] = eta6[1];
     eta[1] = eta6[2];
     eta[2] = eta6[0];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     res += w6 * val;
     eta[0] = eta6[2];
     eta[1] = eta6[0];
     eta[2] = eta6[1];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     res += w6 * val;
     eta[0] = eta6[2];
     eta[1] = eta6[1];
     eta[2] = eta6[0];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c, n);
+    val = p.linear_approx_tri(x, y, c);
     res += w6 * val;
 
     return res * res * c.Volume();
@@ -495,7 +495,7 @@ double Problem::get_L2_norm() {
     double normL2 = 0.0;
     for(Mesh::iteratorCell icell = m.BeginCell(); icell != m.EndCell(); icell++){
         Cell c = icell->getAsCell();
-        normL2 += integrate_over_triangle1(c, c.getNodes()[0], *this);
+        normL2 += integrate_over_triangle1(c, *this);
     }
     normL2 = sqrt(normL2);
     return normL2;
@@ -523,6 +523,9 @@ void Problem::run()
 
 	string solver_name = "inner_mptiluc";
 	Solver S(solver_name);
+
+	S.SetParameter("absolute_tolerance", "1e-14");
+    S.SetParameter("relative_tolerance", "1e-10");
 
 	S.SetMatrix(A);
 	bool solved = S.Solve(rhs, sol);

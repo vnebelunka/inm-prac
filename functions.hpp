@@ -3,10 +3,10 @@
 //
 #include <cmath>
 
-const double dx = 1.0;
+const double dx = 5.0;
 const double dy = 1.0;
 const double dxy = 0.0;
-const double a = M_PI;
+const double a = 4;
 
 double conc_an(double x, double y){
     return sin(a*x) * sin(a*y);
