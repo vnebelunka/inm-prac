@@ -288,6 +288,32 @@ void Problem::run()
 }
 
 
+// Compute cell diameter
+double cellDiam(const Cell &c)
+{
+	ElementArray<Node> nodes = c.getNodes();
+	unsigned m = static_cast<unsigned>(nodes.size());
+	double diam = 0.;
+	for(unsigned i = 0; i < m; i++){
+		for(unsigned j = 0; j < m; j++){
+			diam = max(diam, nodeDist(nodes[i], nodes[j]));
+		}
+	}
+	return diam;
+}
+
+
+// Compute and print mesh diameter
+void main_mesh_diam(Mesh &m)
+{
+	double diam = 0.0;
+	for(Mesh::iteratorCell icell = m.BeginCell(); icell != m.EndCell(); icell++){
+		diam = max(diam, cellDiam(icell->self()));
+	}
+	cout << "Mesh diameter is " << diam << endl;
+}
+
+
 int main(int argc, char ** argv)
 {
 	if( argc < 2 )
@@ -298,6 +324,7 @@ int main(int argc, char ** argv)
 
 	Mesh m;
 	m.Load(argv[1]);
+	main_mesh_diam(m);
 	Mesh::GeomParam table;
 	table[BARYCENTER] = CELL | FACE;
 	table[CENTROID] = CELL | NODE;
