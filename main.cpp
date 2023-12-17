@@ -1,11 +1,11 @@
 #include "inmost.h"
 #include <stdio.h>
 
+#include "functions.hpp"
+
 
 using namespace INMOST;
 using namespace std;
-
-#include "functions.hpp"
 
 enum BoundCondType
 {
@@ -20,19 +20,19 @@ private:
 	/// Mesh
 	Mesh &m;
 	// =========== Tags =============
-	/// Solution tag: 1 real value per node
+	/// Solution tag: 1 real value per cell
 	Tag tagConc;
 	/// Diffusion tensor tag: 3 real values (Dx, Dy, Dxy) per cell
 	Tag tagD;
-	/// Boundary condition type tag: 1 integer value per node
+	/// Boundary condition type tag: 1 integer value per face, sparse on faces
 	Tag tagBCtype;
-	/// Boundary condition value tag: 1 real value per node, sparse on nodes
+	/// Boundary condition value tag: 1 real value per face, sparse on faces
 	Tag tagBCval;
-	/// Right-hand side tag: 1 real value per node, sparse on nodes
+	/// Right-hand side tag: 1 real value per cell
 	Tag tagSource;
-	/// Analytical solution tag: 1 real value per node
+	/// Analytical solution tag: 1 real value per cell
 	Tag tagConcAn;
-	/// Global index tag: 1 integer value per node
+	/// Global index tag: 1 integer value per cell
 	Tag tagGlobInd;
 
 	// =========== Tag names ===========
@@ -44,21 +44,12 @@ private:
 	const string tagNameConcAn = "Concentration_analytical";
 	const string tagNameGlobInd = "Global_Index";
 
-	// =========== Markers
-	/// Marker for Dirichlet nodes
-	MarkerType mrkDirNode;
-	/// Number of Dirichlet nodes
-	unsigned numDirNodes;
 public:
 	Problem(Mesh &m_);
 	~Problem();
 	void initProblem();
 	void assembleGlobalSystem(Sparse::Matrix &A, Sparse::Vector &rhs);
-	void assembleLocalSystem(const Cell &c, rMatrix &A_loc, rMatrix &rhs_loc);
 	void run();
-    //double get_c_norm();
-    double get_L2_norm();
-    double linear_approx_tri(double x, double y, const Cell&);
 };
 
 Problem::Problem(Mesh &m_) : m(m_)
@@ -73,444 +64,188 @@ Problem::~Problem()
 void Problem::initProblem()
 {
 	// Init tags
-	tagConc = m.CreateTag(tagNameConc, DATA_REAL, NODE, NONE, 1);
+	tagConc = m.CreateTag(tagNameConc, DATA_REAL, CELL, NONE, 1);
 	tagD = m.CreateTag(tagNameD, DATA_REAL, CELL, NONE, 3);
-	tagBCtype = m.CreateTag(tagNameBCtype, DATA_INTEGER, NODE, NODE, 1);
-	tagBCval = m.CreateTag(tagNameBCval, DATA_REAL, NODE, NODE, 1);
-	tagSource =  m.CreateTag(tagNameSource, DATA_REAL, NODE, NONE, 1);
-	tagConcAn =  m.CreateTag(tagNameConcAn, DATA_REAL, NODE, NONE, 1);
-	tagGlobInd = m.CreateTag(tagNameGlobInd, DATA_INTEGER, NODE, NONE, 1);
+	tagBCtype = m.CreateTag(tagNameBCtype, DATA_INTEGER, FACE, FACE, 1);
+	tagBCval = m.CreateTag(tagNameBCval, DATA_REAL, FACE, FACE, 1);
+	tagSource = m.CreateTag(tagNameSource, DATA_REAL, CELL, CELL, 1);
+	tagConcAn = m.CreateTag(tagNameConcAn, DATA_REAL, CELL, CELL, 1);
+	tagGlobInd = m.CreateTag(tagNameGlobInd, DATA_INTEGER, CELL, NONE, 1);
 
 	// Cell loop
-	// 1. Check that cell is a triangle
-	// 2. Set diffusion tensor values
+	// 1. Set diffusion tensor values
+	// 2. Write analytical solution and source tags
+	// 3. Assign global indices
+	int glob_ind = 0;
 	for(Mesh::iteratorCell icell = m.BeginCell(); icell != m.EndCell(); icell++){
 		Cell c = icell->getAsCell();
-		ElementArray<Node> nodes = c.getNodes();
-		if (nodes.size() != 3){
-			cout<<"Cell is not a triangle!!!";
-			exit(1);
-		}
-		
-		c.RealArray(tagD)[0] = dx;
-		c.RealArray(tagD)[1] = dy;
-		c.RealArray(tagD)[2] = dxy;
+		c.RealArray(tagD)[0] = dx; // Dx
+		c.RealArray(tagD)[1] = dy; // Dy
+		c.RealArray(tagD)[2] = dxy; // Dxy
+		double xc[2];
+		c.Barycenter(xc);
+		c.Real(tagConcAn) = C(xc[0], xc[1]);
+		c.Real(tagSource) = source(xc[0], xc[1]);
+		c.Integer(tagGlobInd) = glob_ind;
+		glob_ind++;
 	}
 
-	// Node loop
-	// 1. Write analytical solution and source
-	// 2. Check if node is boundary, set BC type and value, mark it
-	// 3. Assign global indices
-	mrkDirNode = m.CreateMarker();
-	numDirNodes = 0;
-	int glob_ind = 0;
-	for(Mesh::iteratorNode inode = m.BeginNode(); inode != m.EndNode(); inode++){
-		Node n = inode->getAsNode();
-		double xn[3];
-		n.Centroid(xn);
-		n.Real(tagConcAn) = conc_an(xn[0], xn[1]);
-		n.Real(tagSource) = source(xn[0], xn[1]);
-
-		if(n.Boundary()){
-			n.SetMarker(mrkDirNode);
-			n.Integer(tagBCtype) = BC_DIR;
-			numDirNodes++;
-			n.Real(tagBCval) = n.Real(tagConcAn);
-
-		}
-		else{
-			n.Integer(tagGlobInd) = glob_ind;
-			glob_ind++;
-		}
-	}
-	printf("Number of Dirichlet nodes: %d\n", numDirNodes);
-}
-
-double basis_func(double x_, double y_, const Cell &c, const Node &n)
-{
-    ElementArray<Node> nodes = c.getNodes();
-	unsigned n_ind = 0;
-	double x[3];
-	double y[3];
-	for(unsigned i = 0; i < 3; i++){
-		if(n == nodes[i])
-			n_ind = i;
-		double coords[3];
-		nodes[i].Centroid(coords);
-		x[i] = coords[0];
-		y[i] = coords[1];
-	}
-	
-	if(n_ind == 0){
-		return ((x_   - x[2])*(y[1] - y[2]) - (x[1] - x[2])*(y_   - y[2])) /
-			   ((x[0] - x[2])*(y[1] - y[2]) - (x[1] - x[2])*(y[0] - y[2]));
-	}
-	else if(n_ind == 1){
-		return ((x_   - x[2])*(y[0] - y[2]) - (x[0] - x[2])*(y_   - y[2])) /
-			   ((x[1] - x[2])*(y[0] - y[2]) - (x[0] - x[2])*(y[1] - y[2]));
-	}
-	else if(n_ind == 2){
-		return ((x_   - x[0])*(y[1] - y[0]) - (x[1] - x[0])*(y_   - y[0])) /
-			   ((x[2] - x[0])*(y[1] - y[0]) - (x[1] - x[0])*(y[2] - y[0]));
-	}
-	else{
-		printf("Unexpected n_ind = %d\n", n_ind);
-		exit(1);
+	// Face loop:
+	// 1. Set BC
+	for(Mesh::iteratorFace iface = m.BeginFace(); iface != m.EndFace(); iface++){
+		Face f = iface->getAsFace();
+		if(!f.Boundary())
+			continue;
+		f.Integer(tagBCtype) = BC_DIR;
+		double xf[2];
+		f.Barycenter(xf);
+		f.Real(tagBCval) = C(xf[0], xf[1]);
 	}
 }
 
-rMatrix basis_func_grad(const Cell &c, const Node &n)
-{
-    ElementArray<Node> nodes = c.getNodes();
-	double x[3];
-	double y[3];
-	// gradient of the basis function
-	rMatrix grad(2,1);
-	unsigned n_ind = 0;
-	for(unsigned i = 0; i < 3; i++){
-		if(n == nodes[i])
-			n_ind = i;
-		double coords[3];
-		nodes[i].Centroid(coords);
-		x[i] = coords[0];
-		y[i] = coords[1];
-	}
-	
-	if(n_ind == 0){
-		grad(0,0) = (y[1] - y[2]);
-		grad(1,0) = - (x[1] - x[2]);
-		grad /= ((x[0] - x[2])*(y[1] - y[2]) - (x[1] - x[2])*(y[0] - y[2]));
-	}
-	else if(n_ind == 1){
-		grad(0,0) = (y[0] - y[2]);
-		grad(1,0) = - (x[0] - x[2]);
-		grad /= ((x[1] - x[2])*(y[0] - y[2]) - (x[0] - x[2])*(y[1] - y[2]));
-	}
-	else if(n_ind == 2){
-		grad(0,0) = (y[1] - y[0]);
-		grad(1,0) = - (x[1] - x[0]);
-		grad /= ((x[2] - x[0])*(y[1] - y[0]) - (x[1] - x[0])*(y[2] - y[0]));
-	}
-	else{
-		printf("Unexpected n_ind = %d\n", n_ind);
-		exit(1);
-	}
-	return grad;
-}
-
-void coords_from_barycentric(double *node_x, double *node_y, double *eta, double *x, double *y)
-{
-	*x = node_x[0] * eta[0] + node_x[1] * eta[1] + node_x[2] * eta[2];
-	*y = node_y[0] * eta[0] + node_y[1] * eta[1] + node_y[2] * eta[2];
-}
-
-double Problem::linear_approx_tri(double x, double y, const Cell &c){
-    ElementArray<Node> nodes = c.getNodes();
-    double res = 0.0;
-    for(unsigned i = 0; i < 3; i++){
-        //double xn[3];
-        //nodes[i].Barycenter(xn);
-        res += nodes[i].Real(tagConc) * basis_func(x, y, c, nodes[i]);
-    }
-    return conc_an(x, y) - res;
-}
-
-double integrate_over_triangle(const Cell &c, const Node n, double (*f)(double, double, const Cell&, const Node&))
-{
-	double res = 0.0;
-	double w3 = 0.205950504760887;
-	double w6 = 0.063691414286223;
-	double eta3[3] = {0.124949503233232, 0.437525248383384, 0.437525248383384};
-	double eta6[3] = {0.797112651860071, 0.165409927389841, 0.037477420750088};
-
-	ElementArray<Node> nodes = c.getNodes();
-	if(nodes.size() != 3){
-		printf("Cell is not a triangle, has %lu nodes!\n", nodes.size());
-		exit(1);
-	}
-	// Coordinates of triangle nodes
-	double node_x[3], node_y[3];
-	// Set them
-	for(unsigned i = 0; i < 3; i++){
-		double c[3];
-		nodes[i].Centroid(c);
-		node_x[i] = c[0];
-		node_y[i] = c[1];
-	}
-
-	// Add contribution from all combinations in eta3
-	double x, y, val;
-	double eta[3];
-	eta[0] = eta3[0];
-	eta[1] = eta3[1];
-	eta[2] = eta3[2];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	//printf("x = %e, y = %e, val = %e\n", x, y, val);
-	res += w3 * val;
-	eta[0] = eta3[1];
-	eta[1] = eta3[2];
-	eta[2] = eta3[0];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	res += w3 * val;
-	eta[0] = eta3[2];
-	eta[1] = eta3[0];
-	eta[2] = eta3[1];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	res += w3 * val;
-
-
-	// Add contribution from all combinations in eta6
-	eta[0] = eta6[0];
-	eta[1] = eta6[1];
-	eta[2] = eta6[2];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	res += w6 * val;
-	eta[0] = eta6[0];
-	eta[1] = eta6[2];
-	eta[2] = eta6[1];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	res += w6 * val;
-	eta[0] = eta6[1];
-	eta[1] = eta6[0];
-	eta[2] = eta6[2];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	res += w6 * val;
-	eta[0] = eta6[1];
-	eta[1] = eta6[2];
-	eta[2] = eta6[0];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	res += w6 * val;
-	eta[0] = eta6[2];
-	eta[1] = eta6[0];
-	eta[2] = eta6[1];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	res += w6 * val;
-	eta[0] = eta6[2];
-	eta[1] = eta6[1];
-	eta[2] = eta6[0];
-	coords_from_barycentric(node_x, node_y, eta, &x, &y);
-	val = f(x, y, c, n);
-	res += w6 * val;
-
-	res *= c.Volume();
-	return res;
-}
-
-double integrate_over_triangle1(const Cell &c, Problem &p)
-{
-    double res = 0.0;
-    double w3 = 0.205950504760887;
-    double w6 = 0.063691414286223;
-    double eta3[3] = {0.124949503233232, 0.437525248383384, 0.437525248383384};
-    double eta6[3] = {0.797112651860071, 0.165409927389841, 0.037477420750088};
-
-    ElementArray<Node> nodes = c.getNodes();
-    if(nodes.size() != 3){
-        printf("Cell is not a triangle, has %lu nodes!\n", nodes.size());
-        exit(1);
-    }
-    // Coordinates of triangle nodes
-    double node_x[3], node_y[3];
-    // Set them
-    for(unsigned i = 0; i < 3; i++){
-        double c[3];
-        nodes[i].Centroid(c);
-        node_x[i] = c[0];
-        node_y[i] = c[1];
-    }
-
-    // Add contribution from all combinations in eta3
-    double x, y, val;
-    double eta[3];
-    eta[0] = eta3[0];
-    eta[1] = eta3[1];
-    eta[2] = eta3[2];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    //printf("x = %e, y = %e, val = %e\n", x, y, val);
-    res += w3 * val;
-    eta[0] = eta3[1];
-    eta[1] = eta3[2];
-    eta[2] = eta3[0];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    res += w3 * val;
-    eta[0] = eta3[2];
-    eta[1] = eta3[0];
-    eta[2] = eta3[1];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    res += w3 * val;
-
-
-    // Add contribution from all combinations in eta6
-    eta[0] = eta6[0];
-    eta[1] = eta6[1];
-    eta[2] = eta6[2];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    res += w6 * val;
-    eta[0] = eta6[0];
-    eta[1] = eta6[2];
-    eta[2] = eta6[1];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    res += w6 * val;
-    eta[0] = eta6[1];
-    eta[1] = eta6[0];
-    eta[2] = eta6[2];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    res += w6 * val;
-    eta[0] = eta6[1];
-    eta[1] = eta6[2];
-    eta[2] = eta6[0];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    res += w6 * val;
-    eta[0] = eta6[2];
-    eta[1] = eta6[0];
-    eta[2] = eta6[1];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    res += w6 * val;
-    eta[0] = eta6[2];
-    eta[1] = eta6[1];
-    eta[2] = eta6[0];
-    coords_from_barycentric(node_x, node_y, eta, &x, &y);
-    val = p.linear_approx_tri(x, y, c);
-    res += w6 * val;
-
-    return res * res * c.Volume();
-}
-
-double fphi(double x, double y, const Cell& c, const Node& n)
-{
-	return source(x, y) * basis_func(x, y, c, n);
-}
-
-double dot_D(const Cell &c, const Node &n1, const Node &n2, const rMatrix & D){
-    rMatrix Dgradu(2, 1), gradu = basis_func_grad(c, n1), gradv = basis_func_grad(c, n2);
-    Dgradu(0, 0) = D(0, 0) * gradu(0, 0) + D(0, 1) * gradu(1, 0);
-    Dgradu(1, 0) = D(1, 0) * gradu(0, 0) + D(1, 1) * gradu(1, 0);
-    return Dgradu(0, 0) * gradv(0, 0) + Dgradu(1, 0) * gradv(1, 0);
-}
-
-double basis_func_dot_source(double x, double y, const Cell& c, const Node& n){
-    return basis_func(x, y, c, n) * source(x, y);
-}
-
-// [ [phi1,phi1], [phi1,phi2]...   ]
-// [   ]
-// [   ]
-// energetic scalar product: [u,v] = (D*grad(u), grad(v)) = (grad(v))^T * D * grad(u)
-void Problem::assembleLocalSystem(const Cell &c, rMatrix &A_loc, rMatrix &rhs_loc)
-{
-     rMatrix D(2,2);
-	 D(0,0) = c.RealArray(tagD)[0];
-	 D(1,1) = c.RealArray(tagD)[1];
-	 D(0,1) = D(1,0) = c.RealArray(tagD)[2];
-	 
-	 ElementArray<Node> nodes = c.getNodes();
-	 
-	 A_loc = rMatrix(3,3);
-	 rhs_loc = rMatrix(3,1);
-	 
-	for(unsigned i = 0; i < 3; i++){
-        for(unsigned j = 0; j < 3; ++j){
-            A_loc(i, j) = dot_D(c, nodes[i], nodes[j], D) * c.Volume();
-        }
-        rhs_loc(i, 0) = integrate_over_triangle(c, nodes[i], &basis_func_dot_source);
-	}
-	 
+double calc_tf(rMatrix const& D, rMatrix const& nf, double *dA){
+	rMatrix DdA(2, 1);
+	DdA(0, 0) = D(0, 0) * dA[0] + D(0, 1) * dA[1];
+	DdA(1, 0) = D(1, 0) * dA[0] + D(1, 1) * dA[1];
+	double temp = (DdA(0, 0) * nf(0, 0) + DdA(1,0) * nf(1, 0)) / 
+					(DdA(0, 0) * DdA(0, 0) + DdA(1,0) * DdA(1,0));
+	return temp;
 }
 
 void Problem::assembleGlobalSystem(Sparse::Matrix &A, Sparse::Vector &rhs)
 {
-	// Cell loop
-	// For each cell assemble local system
-	// and incorporate it into global
-	for(Mesh::iteratorCell icell = m.BeginCell(); icell != m.EndCell(); icell++){
-		Cell c = icell->getAsCell();
-		rMatrix A_loc, rhs_loc;
-		assembleLocalSystem(c, A_loc, rhs_loc);
-		// Now A_loc is 3x3, rhs_loc is 3x1
-		//  
-		//
-		//
-		//
+	// Face loop
+	// Calculate transmissibilities using
+	// two-point flux approximation (TPFA)
+	for(Mesh::iteratorFace iface = m.BeginFace(); iface != m.EndFace(); iface++){
+		Face f = iface->getAsFace();
+		double xf[2];
+		rMatrix nf(2,1);
+		f.UnitNormal(nf.data());
+		f.Barycenter(xf);
+		if(f.Boundary()){
+			int BCtype = f.Integer(tagBCtype);
+			if(BCtype == BC_NEUM){
 
-		ElementArray<Node> nodes = c.getNodes();
-		unsigned glob_ind[3];
-		for(unsigned loc_ind = 0; loc_ind < 3; loc_ind++){
-            // How to determine global index?
-            glob_ind[loc_ind] = nodes[loc_ind].Integer(tagGlobInd);
-		}
-		
-		for(unsigned loc_ind = 0; loc_ind < 3; loc_ind++){
-			// Consider node with local index 'loc_ind'
-			
-			// Check if this is a Dirichlet node
-			if(nodes[loc_ind].GetMarker(mrkDirNode))
-				continue;
-			
-			for(unsigned j = 0; j < 3; j++){
-				if(nodes[j].GetMarker(mrkDirNode)){
-					rhs[glob_ind[loc_ind]] -= A_loc(loc_ind,j) * nodes[j].Real(tagBCval);
-				}
-				else
-					A[glob_ind[loc_ind]][glob_ind[j]] += A_loc(loc_ind,j);
-				
 			}
-			rhs[glob_ind[loc_ind]] += rhs_loc(loc_ind,0);
+			else if(BCtype == BC_DIR){
+				Cell cA;
+				cA = f.BackCell();
+				double t = 0.0; // transmissibility
+				double xA[2];
+				cA.Barycenter(xA);
+				double dA[2];
+				dA[0] = xf[0] - xA[0], dA[1] = xf[1] - xA[1];
+				rMatrix D(2,2);
+	 			D(0,0) = cA.RealArray(tagD)[0];
+	 			D(1,1) = cA.RealArray(tagD)[1];
+	 			D(0,1) = D(1,0) = cA.RealArray(tagD)[2];
+				double tf = calc_tf(D, nf, dA);
+				int i = cA.Integer(tagGlobInd);
+				A[i][i] += tf * f.Area();
+				rhs[i] += tf * C(xf[0], xf[1]) * f.Area();
+				// implement by yourself
+			}
 		}
+		else{
+			// Internal face
+			Cell cA, cB;
+			cA = f.BackCell();
+			cB = f.FrontCell();
+			if(!cB.isValid()){
+				cout << "Invalid FrontCell!" << endl;
+				exit(1);
+			}
+			double xA[2], xB[2];
+			cA.Barycenter(xA), cB.Barycenter(xB);
+			double dA[2], dB[2];
+			dA[0] = xf[0] - xA[0], dA[1] = xf[1] - xA[1];
+			dB[0] = xf[0] - xB[0], dB[1] = xf[1] - xB[1];
+			rMatrix D(2,2);
+	 		D(0,0) = cA.RealArray(tagD)[0];
+	 		D(1,1) = cA.RealArray(tagD)[1];
+	 		D(0,1) = D(1,0) = cA.RealArray(tagD)[2];
+			double tf_A = calc_tf(D, nf, dA);
+			D(0,0) = cB.RealArray(tagD)[0];
+	 		D(1,1) = cB.RealArray(tagD)[1];
+	 		D(0,1) = D(1,0) = cB.RealArray(tagD)[2];
+			double tf_B = calc_tf(D, nf, dB);
+			double tf = (tf_A * tf_B) / (tf_A - tf_B);
+			int i = cA.Integer(tagGlobInd);
+			int j = cB.Integer(tagGlobInd);
+			A[i][i] -= tf * f.Area();
+			A[i][j] += tf * f.Area();
+
+			A[j][j] -= tf * f.Area();
+			A[j][i] += tf * f.Area();
+
+			// implement by yourself
+		}
+	}
+	for(auto icell = m.BeginCell(); icell != m.EndCell(); icell++){
+		Cell c = icell->getAsCell();
+		int i = c.Integer(tagGlobInd);
+		double center[2];
+		c.Barycenter(center);
+		rhs[i] += source(center[0], center[1]) * c.Volume();
 	}
 }
 
-double get_c_norm(Mesh &m) {
-    double normC = 0.0;
-    for(Mesh::iteratorNode inode = m.BeginNode(); inode != m.EndNode(); inode++){
-        Node n = inode->getAsNode();
-        double x[3];
-        n.Centroid(x);
-        double diff_n = abs(n.Real(m.GetTag("Concentration_analytical"))
-                - n.Real(m.GetTag("Concentration")));
-        if (diff_n > normC){
-            normC = diff_n;
-        }
-    }
-    return normC;
+void checkOrtho(Mesh *m)
+{
+Tag T = m->CreateTag("Ortho", DATA_REAL, CELL, NONE, 1);
+for(auto iface = m->BeginFace(); iface != m->EndFace(); iface++){
+	Face f = iface->getAsFace();
+	Cell cp, cm = f.BackCell();
+	double xp[3], xm[3], xf[3], nf[3], l[3];
+	f.Barycenter(xf);
+	f.UnitNormal(nf);
+	cm.Barycenter(xm);
+
+	if(f.FrontCell().isValid()){
+		cp = f.FrontCell();
+		cp.Barycenter(xp);
+		for(int i = 0; i < 3; i++)
+			l[i] = xp[i] - xm[i];
+	}
+	else{
+		for(int i = 0; i < 3; i++)
+			l[i] = xf[i] - xm[i];
+	}
+
+	double val = fabs(l[1]*nf[2] - l[2]*nf[1]);
+	f.BackCell().Real(T) += val;
+	if(val > 1e-5){
+		//printf("Non-orthogonal face!\n");
+		continue;
+	}
+	val = fabs(l[0]*nf[2] - l[2]*nf[0]);
+	f.BackCell().Real(T) += val;
+	if(val > 1e-5){
+		//printf("Non-orthogonal face!\n");
+		continue;
+	}
+	val = fabs(l[0]*nf[1] - l[1]*nf[0]);
+	f.BackCell().Real(T) += val;
+	if(val > 1e-5){
+		//printf("Non-orthogonal face!\n");
+		continue;
+	}
 }
-
-
-double Problem::get_L2_norm() {
-    double normL2 = 0.0;
-    for(Mesh::iteratorCell icell = m.BeginCell(); icell != m.EndCell(); icell++){
-        Cell c = icell->getAsCell();
-        normL2 += integrate_over_triangle1(c, *this);
-    }
-    normL2 = sqrt(normL2);
-    return normL2;
 }
 
 void Problem::run()
 {
 	// Matrix size
-	unsigned N = static_cast<unsigned>(m.NumberOfNodes()) - numDirNodes;
+	unsigned N = static_cast<unsigned>(m.NumberOfCells());
 	// Global matrix called 'stiffness matrix'
 	Sparse::Matrix A;
 	// Solution vector
 	Sparse::Vector sol;
 	// Right-hand side vector
 	Sparse::Vector rhs;
+
+	checkOrtho(&m);
 
 	A.SetInterval(0, N);
 	sol.SetInterval(0, N);
@@ -523,69 +258,33 @@ void Problem::run()
 
 	string solver_name = "inner_mptiluc";
 	Solver S(solver_name);
-
+	S.SetParameter("drop_tolerance", "0");
 	S.SetParameter("absolute_tolerance", "1e-14");
     S.SetParameter("relative_tolerance", "1e-10");
 
+
 	S.SetMatrix(A);
 	bool solved = S.Solve(rhs, sol);
+	printf("Number of iterations: %d\n", S.Iterations());
+	printf("Residual:             %e\n", S.Residual());
 	if(!solved){
 		printf("Linear solver failed: %s\n", S.GetReason().c_str());
-		printf("Number of iterations: %d\n", S.Iterations());
-		printf("Residual:             %e\n", S.Residual());
 		exit(1);
 	}
 
-	for(Mesh::iteratorNode inode = m.BeginNode(); inode != m.EndNode(); inode++){
-		Node n = inode->getAsNode();
-		if(n.GetMarker(mrkDirNode)){
-			n.Real(tagConc) = n.Real(tagBCval);
-			continue;
-		}
-		unsigned ind = static_cast<unsigned>(n.Integer(tagGlobInd));
-		n.Real(tagConc) = sol[ind];
-	}
-	m.Save("res.vtk");
-}
-
-
-
-// Compute distance between two nodes
-double nodeDist(const Node &n1, const Node &n2)
-{
-	double x1[3], x2[3];
-	n1.Centroid(x1);
-	n2.Centroid(x2);
-	return sqrt(
-				(  x1[0] - x2[0])*(x1[0] - x2[0])
-				+ (x1[1] - x2[1])*(x1[1] - x2[1])
-				+ (x1[2] - x2[2])*(x1[2] - x2[2])
-				);
-}
-
-// Compute cell diameter
-double cellDiam(const Cell &c)
-{
-	ElementArray<Node> nodes = c.getNodes();
-	unsigned m = static_cast<unsigned>(nodes.size());
-	double diam = 0.;
-	for(unsigned i = 0; i < m; i++){
-		for(unsigned j = 0; j < m; j++){
-			diam = max(diam, nodeDist(nodes[i], nodes[j]));
-		}
-	}
-	return diam;
-}
-
-
-// Compute and print mesh diameter
-void main_mesh_diam(Mesh &m)
-{
-	double diam = 0.0;
+	double normC = 0.0, normL2 = 0.0;
 	for(Mesh::iteratorCell icell = m.BeginCell(); icell != m.EndCell(); icell++){
-		diam = max(diam, cellDiam(icell->self()));
+		Cell c = icell->getAsCell();
+		unsigned ind = static_cast<unsigned>(c.Integer(tagGlobInd));
+		c.Real(tagConc) = sol[ind];
+		double diff = fabs(c.Real(tagConc) - c.Real(tagConcAn));
+		normL2 += diff * c.Volume();
+		normC = max(normC, diff);
 	}
-	cout << "Mesh diameter is " << diam << endl;
+	printf("Error C-norm:  %e\n", normC);
+	printf("Error L2-norm: %e\n", normL2);
+
+	m.Save("res.vtk");
 }
 
 
@@ -599,15 +298,14 @@ int main(int argc, char ** argv)
 
 	Mesh m;
 	m.Load(argv[1]);
+	Mesh::GeomParam table;
+	table[BARYCENTER] = CELL | FACE;
+	table[CENTROID] = CELL | NODE;
+	table[MEASURE] = CELL | FACE;
+	m.PrepareGeometricData(table);
 	Problem P(m);
 	P.initProblem();
 	P.run();
-
-    Mesh m1;
-    m1.Load("res.vtk");
-	main_mesh_diam(m1);
-    cout << "|u - u_approx|_C = " << get_c_norm(m1) << endl;
-    cout << "|u - u_approx|_L2 = " << P.get_L2_norm() << endl;
 	printf("Success\n");
 	return 0;
 }

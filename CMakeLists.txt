@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(FDM)
+project(FVM)
 
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -15,7 +15,7 @@ include_directories(${INMOST_INCLUDE_DIRS})
 add_definitions(${INMOST_DEFINITIONS})
 
 
-add_executable(fde 
+add_executable(fvm 
         main.cpp
         functions.hpp)
-target_link_libraries(fde ${INMOST_LIBRARIES})
+target_link_libraries(fvm ${INMOST_LIBRARIES})
