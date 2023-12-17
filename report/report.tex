@@ -5,6 +5,8 @@
 \usepackage[english,russian]{babel}
 \usepackage{graphicx}
 
+
+\DeclareMathOperator{\grad}{grad}
 \newcommand{\divg}{\mathrm{div}\,}
 
 \begin{document}
@@ -14,7 +16,7 @@
 
 $$
 \begin{cases}
-    \divg(-\mathbb{D} u) = f, x \in \Omega, \\
+    \divg(-\mathbb{D} \grad u) = f, x \in \Omega, \\
     u|_{\partial \Omega} = g.
 \end{cases}
 $$
@@ -28,10 +30,10 @@ $
 \]
 с помощью пятиточечного шаблона
 \[
-    \frac{\partial^2 u}{\partial x^2}(x_i, y_j) \equiv \frac{u^h_{i+1,j} - 2u^h_{i,j} + u^h_{i-1,j}},
+    \frac{\partial^2 u}{\partial x^2}(x_i, y_j) \equiv \frac{u^h_{i+1,j} - 2u^h_{i,j} + u^h_{i-1,j}}{h^2},
 \]
 \[
-    \frac{\partial^2 u}{\partial y^2}(x_i, y_j) \equiv \frac{u^h_{i,j+1} - 2u^h_{i,j} + u^h_{i,j-1}},
+    \frac{\partial^2 u}{\partial y^2}(x_i, y_j) \equiv \frac{u^h_{i,j+1} - 2u^h_{i,j} + u^h_{i,j-1}}{h^2},
 \].
 
 Полученная система решается с помощью библиотеки \href{https://github.com/INMOST-DEV/INMOST}{INMOST}.
