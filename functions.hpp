@@ -3,10 +3,10 @@
 //
 #include <cmath>
 
-const double dx = 10.0;
-const double dy = 5.0;
-const double dxy = 4.0;
-const double a = 12;
+const double dx = 5.0;
+const double dy = 1.0;
+const double dxy = 0.0;
+const double a = 4;
 
 double C(double x, double y) // analytical solution
 {

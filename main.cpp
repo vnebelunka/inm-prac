@@ -108,7 +108,7 @@ double calc_tf(rMatrix const& D, rMatrix const& nf, double *dA){
 	DdA(0, 0) = D(0, 0) * dA[0] + D(0, 1) * dA[1];
 	DdA(1, 0) = D(1, 0) * dA[0] + D(1, 1) * dA[1];
 	double temp = (DdA(0, 0) * nf(0, 0) + DdA(1,0) * nf(1, 0)) / 
-					(DdA(0, 0) * DdA(0, 0) + DdA(1,0) * DdA(1,0));
+					(dA[0]* dA[0] + dA[1] * dA[1]);
 	return temp;
 }
 
@@ -265,6 +265,7 @@ void Problem::run()
 
 	S.SetMatrix(A);
 	bool solved = S.Solve(rhs, sol);
+	sol.Save("sol.mtx");
 	printf("Number of iterations: %d\n", S.Iterations());
 	printf("Residual:             %e\n", S.Residual());
 	if(!solved){
@@ -285,6 +286,19 @@ void Problem::run()
 	printf("Error L2-norm: %e\n", normL2);
 
 	m.Save("res.vtk");
+}
+
+// Compute distance between two nodes
+double nodeDist(const Node &n1, const Node &n2)
+{
+	double x1[3], x2[3];
+	n1.Centroid(x1);
+	n2.Centroid(x2);
+	return sqrt(
+				(  x1[0] - x2[0])*(x1[0] - x2[0])
+				+ (x1[1] - x2[1])*(x1[1] - x2[1])
+				+ (x1[2] - x2[2])*(x1[2] - x2[2])
+				);
 }
 
 
@@ -324,14 +338,10 @@ int main(int argc, char ** argv)
 
 	Mesh m;
 	m.Load(argv[1]);
-	main_mesh_diam(m);
 	Mesh::GeomParam table;
-	table[BARYCENTER] = CELL | FACE;
-	table[CENTROID] = CELL | NODE;
-	table[MEASURE] = CELL | FACE;
-	m.PrepareGeometricData(table);
 	Problem P(m);
 	P.initProblem();
+	main_mesh_diam(m);
 	P.run();
 	printf("Success\n");
 	return 0;
