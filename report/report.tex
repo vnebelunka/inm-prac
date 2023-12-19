@@ -12,77 +12,80 @@
 \begin{document}
 	
 \section{Постановка задачи}
-Решается двумерная задача Дирихле для двумерного стационарного оператора диффузии
+Решается двумерная задача Дирихле для двумерного нестационарного оператора диффузии
 
 $$
 \begin{cases}
-    \divg(-\mathbb{D} \grad u) = f, x \in \Omega, \\
-    u|_{\partial \Omega} = g.
+    \frac{\partial u}{\partial t} -\divg(\mathbb{D} \grad u) = f, x \in \Omega, \\
+    u|_{\partial \Omega} = g, \\
+    u|_{t=0} = u_0,
 \end{cases}
 $$
 $
-    \Omega = [0,1]^2, D = diag(d_x, d_y).
+    \Omega = [0,1]^2.
 $
 
-Задача решается методом конечных разностей на регулярной квадратной сетке
-\[
-    w_h = {ih, jh}, h = \frac{1}{N}
-\]
-с помощью пятиточечного шаблона
-\[
-    \frac{\partial^2 u}{\partial x^2}(x_i, y_j) \equiv \frac{u^h_{i+1,j} - 2u^h_{i,j} + u^h_{i-1,j}}{h^2},
-\]
-\[
-    \frac{\partial^2 u}{\partial y^2}(x_i, y_j) \equiv \frac{u^h_{i,j+1} - 2u^h_{i,j} + u^h_{i,j-1}}{h^2},
-\].
 
-Полученная система решается с помощью библиотеки \href{https://github.com/INMOST-DEV/INMOST}{INMOST}.
+\[
+\mathbb{D}=
+\begin{bmatrix}
+	d_x & d_{xy} \\
+	d_{xy} & d_y \\
+\end{bmatrix}
+\]
+
+
+Задача решается дискретизацией по времени вида
+
+\[
+	\frac{u_h^{n+1} - u_h^n}{\Delta t} + Au_h = b,
+\]
+Где верхний индекс у $u$ отвечает за момент времени, нижний - за координату, а матрица А строится методом конечных разностей. При этом дискретизация по времени осуществляется двумя разными способами, явным и неявным, а именно:
+
+
+\begin{equation}
+	\frac{u_h^{n+1} - u_h^n}{\Delta t} + Au_h^{n} = b^{n},
+\end{equation}
+
+\begin{equation}
+	\frac{u_h^{n+1} - u_h^n}{\Delta t} + Au_h^{n+1} = b^{n+1},
+\end{equation}
+В случае явного метода u на новом временном слое пересчитывается явно по формуле
+
+\begin{equation*}
+	u_h^{n+1} = u_h^n + (b^n - Au_h^n)\Delta t,
+\end{equation*}
+а в случае неявного метода решается система вида
+\begin{equation*}
+	\left( A + \frac{1}{\Delta t} I\right)u_h^{n+1} = b^{n+1} + \frac{u_h^n}{\Delta t}
+\end{equation*}
+	Важно отметить, что неявный метод является абсолютно сходящимся, в то время как явный метод связь временного и пространственного шага вида
+$$
+	\Delta t \leq c h^2
+$$	
 
 
 \section{Численный эксперимент}
 
-Эксперимент проводился для задач, в которых известно аналитическое решение, а именно
-\begin{enumerate}
-	\item $f = \sin(\pi x) \sin(\pi y),~ g = 0, d_x = d_y = 1$. $u = \frac{\sin(\pi x) \sin(\pi y)}{2 \pi^2}$.
-	\item $f = \sin(10 x) \sin(10 y), ~ g = \frac{\sin(10 x) \sin(10 y)}{200} , d_x = d_y = 1$. $u = \frac{\sin(10 x) \sin(10 y)}{200}$.
-	\item $f = \sin(4 \pi x) \sin(\pi y), ~ g = 0, d_x = 5, d_y = 1$. $u = \frac{\sin(4 \pi x) \sin(\pi y)}{(16d_x + d_y)\pi^2}$.
-\end{enumerate}
+Эксперимент проводился для однородной задачи Дирихле с тензором диффузии
 
-Для всех трех экспрементов построены графики С-нормы и среднего значение среднекваратичного отклонения при сгущении сетки.
-Для второго эксперимента также построено само решение.
+\[
+\mathbb{D}=
+\begin{bmatrix}
+	7.75 & 3.89711432 \\
+	3.89711432 & 3.25 \\
+\end{bmatrix},
+\]
+нулевым источником и начальным условием вида
 
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.9\textwidth]{img/pixpiy.png}
-	\caption{$f = \sin(\pi x) \sin(\pi y),~ g = 0, d_x = d_y = 1$}
-\end{figure}
+$$
+u_0(x,y)=
+\begin{cases}
+	1, |x-0.5|<0.15, |y - 0.5| < 0.15, \\
+	0 \text{~иначе}.
+\end{cases}
+$$
 
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.9\textwidth]{img/10x10y.png}
-	\caption{$f = \sin(10 x) \sin(10 y), ~ g = \frac{\sin(10 x) \sin(10 y)}{200} , d_x = d_y = 1$}
-\end{figure}
-
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.9\textwidth]{img/4pixpiy.png}
-	\caption{ $f = \sin(4 \pi x) \sin(\pi y), ~ g = 0, d_x = 5, d_y = 1$}
-\end{figure}
-
-
-\begin{figure}[!htb]
-	\minipage{0.33\textwidth}
-	\includegraphics[width=\textwidth]{img/10.png}
-	\caption{$u, N = 10$}
-	\endminipage\hfill
-	\minipage{0.33\textwidth}
-	\includegraphics[width=\textwidth]{img/100.png}
-	\caption{$u, N = 100$}
-	\endminipage\hfill
-	\minipage{0.33\textwidth}%
-	\includegraphics[width=\textwidth]{img/1000.png}
-	\caption{$u, N = 1000$}
-	\endminipage
-\end{figure}
+Получившееся численные решение приложены к отчёту.
 
 \end{document}
